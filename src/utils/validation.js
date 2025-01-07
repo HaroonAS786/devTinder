@@ -1,4 +1,6 @@
 const validator = require("validator");
+const jwt = require("jsonwebtoken");
+const User = require("../modals/User");
 
 const validateSignUp = (req) => {
     const { fullName, email, password } = req.body;
@@ -11,6 +13,28 @@ const validateSignUp = (req) => {
     }
 };
 
+const isAuthenticated = async (req, res, next) => {
+    try {
+        const { Token } = req.cookies;
+        if (!Token) {
+            return res.status(401).json({ error: "Token not provided" });
+        }
+        const decodeMessage = await jwt.verify(Token, process.env.SECRET_KEY);
+        const { _id } = decodeMessage;
+        const user = await User.findById(_id);
+        if (!user) {
+            throw new Error("User not found");
+        }
+        req.user = user;
+        next();
+    } catch (error) {
+        return res
+            .status(500)
+            .json({ message: "Token is not valid or it is expired " });
+    }
+};
+
 module.exports = {
     validateSignUp,
+    isAuthenticated,
 };

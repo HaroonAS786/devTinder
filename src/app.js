@@ -2,7 +2,9 @@ const express = require("express");
 const parser = require("body-parser");
 const User = require("./modals/User");
 const bcrypt = require("bcrypt");
-const { validateSignUp } = require("./utils/validation");
+const { validateSignUp, isAuthenticated } = require("./utils/validation");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 
@@ -15,6 +17,7 @@ const PORT = process.env.PORT || 8080;
 
 app.use(parser.json());
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/users", async (req, res) => {
     try {
@@ -51,6 +54,12 @@ app.post("/login", async (req, res) => {
         }
         const isPassword = await bcrypt.compare(password, user.password);
         if (isPassword) {
+            const token = await jwt.sign(
+                { _id: user._id },
+                process.env.SECRET_KEY,
+                { expiresIn: 60 }
+            );
+            res.cookie("Token", token);
             res.status(200).send("Login Successfully");
         } else {
             throw new Error("Invalid Credentials");
@@ -82,6 +91,17 @@ app.patch("/updateUser/:userId", async (req, res) => {
     }
 });
 
+app.get("/profile", isAuthenticated, async (req, res) => {
+    try {
+        const user = req.user;
+        res.status(200).json({
+            message: "Token verified",
+            user: user,
+        });
+    } catch (error) {
+        console.error("Error verifying token:", error);
+    }
+});
 app.listen(PORT, () => {
     console.log("Server is Up and running on port: " + PORT);
 });
