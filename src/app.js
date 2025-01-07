@@ -1,24 +1,41 @@
 const express = require("express");
+const parser = require("body-parser");
+const User = require("./modals/User");
 
 const app = express();
 
-app.get("/test", (req, res) => {
-    res.send("Get Request");
-});
-app.post("/test", (req, res) => {
-    res.send("Post Request");
-});
-app.put("/test", (req, res) => {
-    res.send("Put Request");
-});
-app.delete("/test", (req, res) => {
-    res.send("Delete Request");
+// Load environment variables
+require("dotenv").config();
+
+// Database connection (assuming you have this set up)
+require("./config/database");
+const PORT = process.env.PORT || 8080;
+
+app.use(parser.json());
+app.use(express.json());
+
+app.get("/users", async (req, res) => {
+    try {
+        const users = await User.find({}, { password: 0 });
+        return res.status(200).json(users);
+    } catch (error) {
+        return res.status(500).json({ message: "Error", data: error });
+    }
 });
 
-// app.use("/test", (req, res) => {
-//     res.send("Hello Testing device");
-// });
+app.post("/signUp", async (req, res) => {
+    try {
+        const user = new User({ ...req.body });
+        await user.save();
+        res.send("User has been Added");
+    } catch (error) {
+        res.status(400).send(error.message);
+    }
+});
 
-app.listen(2000, () => {
-    console.log("Server is successfully running");
+
+
+
+app.listen(PORT, () => {
+    console.log("Server is Up and running on port: " + PORT);
 });
