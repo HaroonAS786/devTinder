@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
 const Schema = mongoose.Schema;
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const UserSchema = new Schema(
     {
@@ -41,11 +43,11 @@ const UserSchema = new Schema(
             type: String,
             default:
                 "https://cdn.vectorstock.com/i/500p/08/19/gray-photo-placeholder-icon-design-ui-vector-35850819.jpg",
-                validate(val) {
-                    if (!validator.isURL(val)) {
-                        throw new Error("Invalid Url: " + val);
-                    }
-                },
+            validate(val) {
+                if (!validator.isURL(val)) {
+                    throw new Error("Invalid Url: " + val);
+                }
+            },
         },
         about: {
             type: String,
@@ -73,6 +75,20 @@ const UserSchema = new Schema(
         timestamps: true,
     }
 );
+
+UserSchema.methods.getJWT = async function () {
+    const user = this;
+    const token = await jwt.sign({ _id: user._id }, process.env.SECRET_KEY, {
+        expiresIn: 60,
+    });
+    return token;
+};
+
+UserSchema.methods.userValidatePassword = async function (passwordInput) {
+    const user = this;
+    const isPasswordValidate = await bcrypt.compare(passwordInput, user.password);
+    return isPasswordValidate;
+};
 
 const UserModal = mongoose.model("users", UserSchema);
 module.exports = UserModal;
