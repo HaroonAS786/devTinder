@@ -1,9 +1,10 @@
 const express = require("express");
 const User = require("../modals/User");
-const parser = require("body-parser");
+const nodemailer = require("nodemailer");
 const bcrypt = require("bcrypt");
 const { validateSignUp, isAuthenticated } = require("../utils/validation");
-const cookieParser = require("cookie-parser");
+const crypto = require("crypto");
+
 const jwt = require("jsonwebtoken");
 
 const authRouter = express.Router();
@@ -25,15 +26,6 @@ authRouter.post("/signUp", async (req, res) => {
     }
 });
 
-// app.get("/users", async (req, res) => {
-//     try {
-//         const users = await User.find({}, { password: 0 });
-//         return res.status(200).json(users);
-//     } catch (error) {
-//         return res.status(500).json({ message: "Error", data: error });
-//     }
-// });
-
 authRouter.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -54,26 +46,111 @@ authRouter.post("/login", async (req, res) => {
     }
 });
 
-// app.patch("/updateUser/:userId", async (req, res) => {
-//     const userId = req.params?.userId;
-//     const data = req.body;
-//     try {
-//         const allowedUpdates = ["fullName", "email", "gender", "age", "skills"];
-//         const isAllowed = Object.keys(data).every((k) =>
-//             allowedUpdates.includes(k)
-//         );
-//         if (!isAllowed) {
-//             res.status(400).send("Update not allowed");
-//         } else {
-//             const user = await User.findByIdAndUpdate({ _id: userId }, data, {
-//                 returnDocument: "after",
-//                 runValidators: true,
-//             });
-//             res.status(200).json(user);
-//         }
-//     } catch (error) {
-//         res.status(400).send(error.message);
-//     }
-// });
+authRouter.post("/forgotPassword", async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Check if the user exists
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Generate a reset token
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
+
+        // Set the reset token and expiration in the database
+        user.token = hashedToken;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+        await user.save();
+
+        // Construct reset password link
+        const resetLink = `${req.protocol}://${req.get(
+            "host"
+        )}/reset-password/${resetToken}`;
+
+        // Email transporter setup
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            host: "smtp.gmail.com",
+            port: 587, // Use 465 for SSL, 587 for TLS
+            secure: false,
+            auth: {
+                user: process.env.EMAIL_USER, // Your email
+                pass: process.env.EMAIL_PASS, // Your email password
+            },
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: "Password Reset Request",
+            // text: `You requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nThis link will expire in 1 hour.`,
+            html: `
+            <p>You requested a password reset. Click the link below to reset your password:</p>
+            <a href="${resetLink}">Reset Password</a>
+            <p>This link will expire in 1 hour.</p>
+        `,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ message: "Password reset email sent." });
+    } catch (error) {
+        console.error("Forgot password error:", error);
+        res.status(500).json({
+            message: "Something went wrong. Please try again later.",
+        });
+    }
+});
+
+authRouter.post("/resetPassword/:token", async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword } = req.body;
+
+        // Hash the provided token
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        // Find the user by the token and check if it hasn't expired
+        const user = await User.findOne({
+            token: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }, // Ensure the token hasn't expired
+        });
+
+        if (!user) {
+            return res
+                .status(400)
+                .json({ message: "Invalid or expired token." });
+        }
+
+        // Update the user's password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+
+        // Clear reset token and expiration
+        user.token = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        res.status(200).json({ message: "Password reset successfully." });
+    } catch (error) {
+        res.status(500).json({ message: "An error occurred.", error });
+    }
+});
+
+authRouter.post("/logout", async (req, res) => {
+    res.cookie("Token", null, {
+        expires: new Date(Date.now()),
+    });
+    res.send("Logout Successful !!");
+});
 
 module.exports = authRouter;

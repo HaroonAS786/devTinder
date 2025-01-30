@@ -22,7 +22,7 @@ app.use("/", authRouter);
 app.use("/", profileRouter);
 
 connectWithCloudMongoDB()
-    .then(async (message) => {
+    .then((message) => {
         console.log(message);
         app.listen(PORT, () => {
             console.log("Server is Up and running on port: " + PORT);

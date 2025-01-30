@@ -13,6 +13,23 @@ const validateSignUp = (req) => {
     }
 };
 
+const validateEditProfile = (req) => {
+    const allowedFields = [
+        "fullName",
+        "email",
+        "age",
+        "photoUrl",
+        "gender",
+        "imageUrl",
+        "about",
+        "skills",
+    ];
+    const isEditAllowed = Object.keys(req.body).every((v) =>
+        allowedFields.includes(v)
+    );
+    return isEditAllowed;
+};
+
 const isAuthenticated = async (req, res, next) => {
     try {
         const { Token } = req.cookies;
@@ -37,4 +54,5 @@ const isAuthenticated = async (req, res, next) => {
 module.exports = {
     validateSignUp,
     isAuthenticated,
+    validateEditProfile
 };

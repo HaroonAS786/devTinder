@@ -66,6 +66,16 @@ const UserSchema = new Schema(
         skills: {
             type: [String],
         },
+
+        token: {
+            type: String,
+            default: "",
+        },
+
+        resetPasswordExpires: {
+            type: Date, // Store the expiration time
+        },
+       
         // createdAt: {
         //     type: Date,
         //     default: Date.now,
@@ -86,7 +96,10 @@ UserSchema.methods.getJWT = async function () {
 
 UserSchema.methods.userValidatePassword = async function (passwordInput) {
     const user = this;
-    const isPasswordValidate = await bcrypt.compare(passwordInput, user.password);
+    const isPasswordValidate = await bcrypt.compare(
+        passwordInput,
+        user.password
+    );
     return isPasswordValidate;
 };
 
