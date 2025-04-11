@@ -31,10 +31,7 @@ const { CLOUD_MONGO_URI } = process.env;
 const connectWithCloudMongoDB = () => {
     return new Promise((resolve, reject) => {
         try {
-            mongoose.connect(CLOUD_MONGO_URI, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-            });
+            mongoose.connect(CLOUD_MONGO_URI);
             resolve("Mongo database connection successful!");
         } catch (err) {
             console.log(err);
