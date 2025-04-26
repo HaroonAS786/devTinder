@@ -1,0 +1,6 @@
+{
+    "name": "Node Practice Production App",
+    "mail": {
+        "host": "prod-mail-server"
+    }
+}
