@@ -4,8 +4,7 @@ const Customer = require("../modals/Customer");
 const Movie = require("../modals/Movie");
 const Joi = require("joi");
 const rentalRouter = express.Router();
-
-
+  
 rentalRouter.get('/rentals', async (req, res) => {
     const rentals = await Rental.find();
     res.status(200).send(rentals)
@@ -13,7 +12,6 @@ rentalRouter.get('/rentals', async (req, res) => {
 
 rentalRouter.post('/createRentals', async (req, res) => {
     try {
-
         const {error}= validateRental(req.body)
         if(error) return res.status(400).send(error.details[0].message)
 

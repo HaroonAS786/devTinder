@@ -37,6 +37,7 @@ const moviesSchema = new Schema({
         max: 255
     },
 })
+
 const rentalSchema = new Schema({
     customer: {
         type: customersSchema,

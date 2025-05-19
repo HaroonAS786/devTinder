@@ -1,6 +1,8 @@
 const validator = require("validator");
 const jwt = require("jsonwebtoken");
 const User = require("../modals/User");
+const winston = require("winston");
+const Joi = require("joi");
 
 const validateSignUp = (req) => {
     const { fullName, email, password } = req.body;
@@ -51,8 +53,31 @@ const isAuthenticated = async (req, res, next) => {
     }
 };
 
+
+const asyncMiddleware = (handler) => {
+    return async (req, res, next) => {
+        try {
+            await handler(req, res)
+        } catch (error) {
+            next(error)
+        }
+    }
+}
+
+const errorHandler = (err, req, res, next) => {
+    // winston.error(err.message)
+    res.status(500).send({error:err})
+}
+
+const joiValidation=()=>{
+    Joi.objectId=require("joi-objectid")(Joi)
+}
+
 module.exports = {
     validateSignUp,
     isAuthenticated,
-    validateEditProfile
+    validateEditProfile,
+    asyncMiddleware,
+    errorHandler,
+    joiValidation
 };

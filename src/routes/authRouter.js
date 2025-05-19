@@ -1,26 +1,42 @@
 const express = require("express");
+const _ = require('lodash');
 const User = require("../modals/User");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcrypt");
-const { validateSignUp, isAuthenticated } = require("../utils/validation");
+const { validateSignUp, isAuthenticated, asyncMiddleware } = require("../utils/validation");
 const crypto = require("crypto");
-
 const jwt = require("jsonwebtoken");
-
 const authRouter = express.Router();
+
+
+authRouter.get("/users", isAuthenticated, asyncMiddleware(async (req, res) => {
+    const users = await User.find().select({ password: 0, token: 0 })
+    res.status(200).send(users);
+}));
+// authRouter.get("/users", isAuthenticated,async (req, res) => {
+//     try {
+//     //    const users= await User.find().select('-password') // for excluding properties
+//        const users= await User.find().select({password:0,token:0})
+//        res.status(200).send(users);
+//     } catch (error) {
+//         res.status(400).send(error.message);
+//     }
+// });
 
 authRouter.post("/signUp", async (req, res) => {
     try {
         validateSignUp(req);
-        const { password } = req.body;
-        const passwordHash = await bcrypt.hash(password, 10);
-        const user = new User({
-            fullName: req.body.fullName,
-            email: req.body.email,
-            password: passwordHash,
-        });
-        await user.save();
-        res.send("User has been Added");
+        const userExist = await User.findOne({ email: req.body.email })
+        if (userExist) return res.status(400).send("User already registered")
+        // const newUser = new User({
+        //     fullName: req.body.fullName,
+        //     email: req.body.email,
+        //     password: passwordHash,
+        // });
+        let newUser = new User(_.pick(req.body, ['fullName', 'email', 'password']));
+        newUser.password = await bcrypt.hash(newUser.password, 10);
+        await newUser.save();
+        res.send(_.pick(newUser, ['_id', 'fullName', 'email']));
     } catch (error) {
         res.status(400).send(error.message);
     }
@@ -37,7 +53,10 @@ authRouter.post("/login", async (req, res) => {
         if (isPassword) {
             const token = await user.getJWT();
             res.cookie("Token", token);
-            res.status(200).send("Login Successfully");
+            res.status(200).send({
+                message: "Login Successfully",
+                data: { user: _.pick(user, ['fullName', 'email']), userToken: token },
+            });
         } else {
             throw new Error("Invalid Credentials");
         }

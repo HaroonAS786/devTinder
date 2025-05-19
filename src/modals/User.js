@@ -89,7 +89,7 @@ const UserSchema = new Schema(
 UserSchema.methods.getJWT = async function () {
     const user = this;
     const token = await jwt.sign({ _id: user._id }, process.env.SECRET_KEY, {
-        expiresIn: 60,
+        expiresIn: 60*60,
     });
     return token;
 };
@@ -102,6 +102,7 @@ UserSchema.methods.userValidatePassword = async function (passwordInput) {
     );
     return isPasswordValidate;
 };
+
 
 const UserModal = mongoose.model("users", UserSchema);
 module.exports = UserModal;
